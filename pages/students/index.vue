@@ -2,33 +2,55 @@
   <div>
     <h1>Список студентів</h1>
 
-    <div>
+    <div style="margin-bottom: 20px;">
       <!-- Пошук -->
-      <input type="text" v-model="searchQuery" placeholder="Пошук студента" style="margin-bottom: 10px; color:black;">
+      <input type="text" v-model="searchQuery" placeholder="Пошук студента" style="margin-bottom: 10px; color: black;">
 
-      <!-- Таблиця зі списком студентів -->
-      <table>
-        <thead>
-        <tr>
-          <th>Ім'я</th>
-          <th>Прізвище</th>
-          <th>Група</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="student in paginatedStudents" :key="student.id">
-          <td>{{ student.firstName }}</td>
-          <td>{{ student.lastName }}</td>
-          <td>{{ student.group }}</td>
-        </tr>
-        </tbody>
-      </table>
+      <!-- Фільтрація за групами -->
+      <div style="margin-bottom: 10px;">
+        <label for="sortByGroup">Сортувати за групами: </label>
+        <select v-model="sortByGroup" id="sortByGroup" class="sort-filter-select">
+          <option value="">Не сортувати</option>
+          <option value="ascending">За зростанням</option>
+          <option value="descending">За спаданням</option>
+        </select>
+      </div>
+
+      <!-- Фільтрація за прізвищами -->
+      <div>
+        <label for="sortByLastName">Сортувати за Прізвищами: </label>
+        <select v-model="sortByLastName" id="sortByLastName" class="sort-filter-select">
+          <option value="">Не сортувати</option>
+          <option value="ascending">За алфавітом (за зростанням)</option>
+          <option value="descending">За алфавітом (за спаданням)</option>
+        </select>
+      </div>
     </div>
 
+    <!-- Таблиця зі списком студентів -->
+    <table class="product-table">
+      <thead>
+      <tr>
+        <th>Ім'я</th>
+        <th>Прізвище</th>
+        <th>Група</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr v-for="student in paginatedStudents" :key="student.id">
+        <td>{{ student.firstName }}</td>
+        <td>{{ student.lastName }}</td>
+        <td>{{ student.group }}</td>
+      </tr>
+      </tbody>
+    </table>
+
     <!-- Пагінація -->
-    <button @click="previousPage" :disabled="currentPage === 1">Back</button>
-    <span>Сторінка {{ currentPage }} з {{ totalPages }}</span>
-    <button @click="nextPage" :disabled="currentPage === totalPages">Next</button>
+    <button @click="previousPage" :disabled="currentPage === 1" class="pagination-btn"><</button>
+    <template v-for="page in totalPages" :key="page">
+      <button @click="changePage(page)" :class="{ active: page === currentPage }" class="pagination-btn">{{ page }}</button>
+    </template>
+    <button @click="nextPage" :disabled="currentPage === totalPages" class="pagination-btn">></button>
   </div>
 </template>
 
@@ -39,7 +61,11 @@ export default {
       students: [], // Список студентів
       searchQuery: '', // Пошуковий запит
       currentPage: 1, // Поточна сторінка
-      itemsPerPage: 5 // Кількість елементів на сторінці
+      itemsPerPage: 5, // Кількість елементів на сторінці
+      sortByGroup: '', // Поле для сортування за групами
+      groupByDescending: false, // Флаг для визначення напрямку сортування за групами
+      sortByLastName: '', // Поле для сортування за прізвищами
+      lastNameDescending: false // Флаг для визначення напрямку сортування за прізвищами
     };
   },
   computed: {
@@ -47,15 +73,42 @@ export default {
     totalPages() {
       return Math.ceil(this.filteredStudents.length / this.itemsPerPage);
     },
-    // Фільтрація студентів за пошуковим запитом
+    // Фільтрація студентів за пошуковим запитом, групами та прізвищами
     filteredStudents() {
-      return this.students.filter(student =>
+      let filtered = this.students.filter(student =>
           student.firstName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
           student.lastName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
           student.group.toLowerCase().includes(this.searchQuery.toLowerCase())
       );
-    },
 
+      // Сортування за групами
+      if (this.sortByGroup) {
+        filtered.sort((a, b) => {
+          const groupA = a.group.toLowerCase();
+          const groupB = b.group.toLowerCase();
+          let result = 0;
+          if (groupA < groupB) result = -1;
+          if (groupA > groupB) result = 1;
+          if (this.groupByDescending) result *= -1;
+          return result;
+        });
+      }
+
+      // Сортування за прізвищами
+      if (this.sortByLastName) {
+        filtered.sort((a, b) => {
+          const lastNameA = a.lastName.toLowerCase();
+          const lastNameB = b.lastName.toLowerCase();
+          let result = 0;
+          if (lastNameA < lastNameB) result = -1;
+          if (lastNameA > lastNameB) result = 1;
+          if (this.lastNameDescending) result *= -1;
+          return result;
+        });
+      }
+
+      return filtered;
+    },
     // Відфільтрований та з пагінацією список студентів для поточної сторінки
     paginatedStudents() {
       const startIndex = (this.currentPage - 1) * this.itemsPerPage;
@@ -75,6 +128,10 @@ export default {
       if (this.currentPage < this.totalPages) {
         this.currentPage++;
       }
+    },
+    // Перехід на конкретну сторінку
+    changePage(page) {
+      this.currentPage = page;
     }
   },
   mounted() {
@@ -94,46 +151,62 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 /* Стилі для таблиці */
-table {
+.product-table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 20px;
 }
 
-th, td {
+.product-table th, .product-table td {
   border: 1px solid #ddd;
   padding: 8px;
   text-align: left;
 }
 
-th {
+.product-table th {
   color: black;
   background-color: #f2f2f2;
 }
 
-/* Зміна кольору рядків при наведенні миші */
-tr:hover {
+.product-table tr:hover {
   background-color: lightgray;
   color: black;
 }
-/* Стилі для кнопок */
-button {
-  width: 90px; /* фіксована ширина кнопки */
-  height: 30px; /* фіксована висота кнопки */
-  border: 2px solid white; /* біла рамка */
-  background-color: lightgray; /* прозорий фон */
-  color: black; /* колір тексту */
-  font-size: 16px; /* розмір шрифту */
-  cursor: pointer; /* зміна курсору при наведенні */
-  transition: background-color 0.3s, color 0.3s; /* плавна анімація зміни кольору */
+
+/* Стилі для кнопок пагінації */
+.pagination-btn {
+  width: 40px;
+  height: 30px;
+  background-color: lightgray;
+  color: black;
+  border: 2px solid white;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
 }
 
-/* Зміна стилю кнопок при наведенні миші */
-button:hover {
-  background-color: white; /* зміна фону при наведенні */
-  color: black; /* зміна коліру тексту при наведенні */
+.pagination-btn:hover {
+  background-color: white;
+}
+
+.pagination-btn:disabled {
+  background-color: lightgray;
+  color: gray;
+  cursor: not-allowed;
+}
+
+.pagination-btn.active {
+  background-color: lightblue;
+}
+
+/* Стилі для поля пошуку та фільтрації */
+.sort-filter-select {
+  margin-bottom: 10px;
+  padding: 8px 16px;
+  font-size: 16px;
 }
 
 </style>

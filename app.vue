@@ -4,6 +4,7 @@
       <div class="nav-item">
         <router-link to="/students" class="nav-link">Students</router-link>
         <router-link to="/products" class="nav-link" style="margin-left: 10px;">Products</router-link>
+        <router-link to="/graphics" class="nav-link" style="margin-left: 10px;">Graphics</router-link>
       </div>
     </nav>
     <router-view />
